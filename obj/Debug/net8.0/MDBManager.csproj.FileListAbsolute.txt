@@ -33,3 +33,4 @@ C:\Users\Sachi\source\repos\MDBManager\obj\Debug\net8.0\refint\MDBManager.dll
 C:\Users\Sachi\source\repos\MDBManager\obj\Debug\net8.0\MDBManager.pdb
 C:\Users\Sachi\source\repos\MDBManager\obj\Debug\net8.0\MDBManager.genruntimeconfig.cache
 C:\Users\Sachi\source\repos\MDBManager\obj\Debug\net8.0\ref\MDBManager.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\metadata.json

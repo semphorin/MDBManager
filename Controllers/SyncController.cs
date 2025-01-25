@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using YamlDotNet.Serialization;
-using System.IO;
 using System.Security.Cryptography;
-using Microsoft.VisualBasic;
+using Microsoft.AspNetCore.Http.Features;
+using System.Text.Json.Serialization;
+using System.Text.Json;
+using YamlDotNet.Core.Tokens;
 
 namespace MDBManager.Controllers
 {
@@ -29,44 +31,27 @@ namespace MDBManager.Controllers
         }
 
 
-        [HttpGet("metadata")]
-        public IActionResult GetMetadata()
-        {
-            // check for valid music path
-            if (musicFolder == "" || musicFolder == null){
-                return NotFound("Please provide a Music Folder.");
-            }
-            else if (!Directory.Exists(musicFolder))
-            {
-                return NotFound("Music Folder not found.");
-            }
-            
-            // Begin to create metadata for the server's music.
-            // Extremely rudimentary, but all it does
-            // is create json data to compare against.
-            // TODO: figure out a way to find out if we need to
-            // regenerate metadata (instead of doing it every time).
-            Dictionary<string, string> metadata = new Dictionary<string, string>();
-            foreach (string file in Directory.EnumerateFiles(musicFolder, "*", SearchOption.AllDirectories))
-            {
-                // EnumerateFiles's searchPattern parameter does NOT support regex.
-                // The block below will check against a small array of known extension
-                // types and only continue with enumeration if the file is valid music.
-                string[] extensions = [".mp3", ".flac", ".ogg"];
-                bool isMusicFile = false;
-                foreach (string extension in extensions){
-                    if (file.EndsWith(extension)){isMusicFile = true;}
-                }
-                if (!isMusicFile){continue;}
-                else{isMusicFile = false;}
-                
-                string relPath = Path.GetRelativePath(musicFolder, file);
-                string hash = ComputeHash(file);
-                //string hash = "test";
-                metadata[relPath] = hash;
-            }
+        // We generate the metadata in Python outside of the webserver for convenience.
+        // MDBClient will generate its own metadata.
+        // Possibly find a way to run the script on its own whenever the Music folder
+        // is updated?
 
-            return Ok(metadata);
+        [HttpGet("returnmetadata")]
+        public IActionResult ReturnMetadata()
+        {
+            try
+            {
+                using (StreamReader reader = new StreamReader("metadata.json"))
+                {
+                    string temp = reader.ReadToEnd();
+                    Dictionary<string,string> metadata = JsonSerializer.Deserialize<Dictionary<string,string>>(temp);
+                    return Ok(metadata);
+                }
+            }
+            catch
+            {
+                return NoContent();
+            }
         }
 
 
@@ -86,12 +71,53 @@ namespace MDBManager.Controllers
         }
 
 
-        private static string ComputeHash(string filePath)
-        {
-            using var sha256 = SHA256.Create();
-            using var stream = System.IO.File.OpenRead(filePath);
-            var hash = sha256.ComputeHash(stream);
-            return BitConverter.ToString(hash).Replace("-", "").ToLower();
-        }
+        // [HttpGet("gendata")]
+        // public IActionResult GenerateMetadata()
+        // {
+
+        //     // check for valid music path
+        //     if (musicFolder == "" || musicFolder == null){
+        //         return NotFound("Please provide a Music Folder.");
+        //     }
+        //     else if (!Directory.Exists(musicFolder))
+        //     {
+        //         return NotFound("Music Folder not found.");
+        //     }
+            
+        //     // Begin to create metadata for the server's music.
+        //     // Extremely rudimentary, but all it does
+        //     // is create json data to compare against.
+        //     Dictionary<string, string> metadata = new Dictionary<string, string>();
+        //     foreach (string file in Directory.EnumerateFiles(musicFolder, "*", SearchOption.AllDirectories))
+        //     {
+        //         // EnumerateFiles's searchPattern parameter does NOT support regex.
+        //         // The block below will check against a small array of known extension
+        //         // types and only continue with enumeration if the file is valid music.
+        //         string[] extensions = [".mp3", ".flac", ".ogg"];
+        //         bool isMusicFile = false;
+        //         foreach (string extension in extensions){
+        //             if (file.EndsWith(extension)){isMusicFile = true;}
+        //         }
+        //         if (!isMusicFile){continue;}
+        //         else{isMusicFile = false;}
+                
+        //         string relPath = Path.GetRelativePath(musicFolder, file);
+        //         string hash = ComputeHash(file);
+        //         //string hash = "test";
+        //         metadata[relPath] = hash;
+        //         //Console.WriteLine(metadata[relPath]);
+        //     }
+
+        //     return Ok(metadata);
+        // }
+
+
+        // private static string ComputeHash(string filePath)
+        // {
+        //     using var sha256 = SHA256.Create();
+        //     using var stream = System.IO.File.OpenRead(filePath);
+        //     var hash = sha256.ComputeHash(stream);
+        //     return BitConverter.ToString(hash).Replace("-", "").ToLower();
+        // }
     }
 }
