@@ -58,7 +58,7 @@ def reset(folder1, folder2):
             shutil.rmtree(x)
             print(f"{x} and its contents have been deleted.")
         elif not os.path.exists(x):
-            print(f"{x} does not exist.")
+            print(f"Error removing file: {x} does not exist.")
         else:
             print(f"{x} was not removed.")
 

@@ -1,6 +1,6 @@
 # Music Database Manager
 
-A cross-platform .NET Core application that synchronizes multiple local music databases with a central, infallible server. This system ensures that local databases stay in sync with the server, automatically downloading missing files to clients (e.g., laptops, smartphones) on the fly.
+A (hopefully) cross-platform .NET Core application that synchronizes multiple local music databases with a master server. Docker will be implemented for easy deployment. This system ensures that slave databases stay in sync with the server by automatically downloading missing files to clients (e.g., laptops, smartphones) on the fly. Utilizes JWT+TOTP for stateless authentication.
 
 *This is the server portion of the application and must be queried by an MDBM Client.*
 *MDBM Client side is being developed and is not yet available. A link to its repo will be posted on this page when it is ready to be seen.*
@@ -18,16 +18,11 @@ A cross-platform .NET Core application that synchronizes multiple local music da
 
 ## Overview
 
-**Music Database Manager** will allow you to synchronize music across devices (laptops, smartphones, or anything that can run a .NET application). It currently only supports a /Music_Library/Artist/Album folder format and is intended for power users that don't necessarily need a graphical interface (one may be implemented in the future). Client devices can query the master server to see if its library is out of date and immediately begin synchronization through HTTPS.
 
 ---
 
 ## Features
 
-- **Cross-Platform Support**: Works on Windows, macOS, and Linux.
-- **Automatic Sync**: Ensures that missing music files are downloaded from the central server.
-- **File Integrity**: Employs SHA256 to ensure that files are not duplicated.
-- **API Integration**: Exposes a RESTful API for triggering sync operations.
 
 ---
 
@@ -37,15 +32,15 @@ A cross-platform .NET Core application that synchronizes multiple local music da
 
 Before running the project, ensure you have the following installed:
 
-- [.NET 6 SDK or later](https://dotnet.microsoft.com/download)
+- [.NET 8 SDK or later](https://dotnet.microsoft.com/download)
 
 ### Steps
 
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/yourusername/music-database-manager.git
-    cd music-database-manager
+    git clone https://github.com/semphorin/mdbmanager.git
+    cd mdbmanager
     ```
 
 2. Restore the dependencies:
@@ -54,22 +49,41 @@ Before running the project, ensure you have the following installed:
     dotnet restore
     ```
 
-3. Build the application:
+3. Set a JWT secret:
+
+    Environment variable method (less secure):
+    ```bash
+    setx JWT_MDB_SECRET "your_key_here"
+    ```
+
+    _____ method (more secure):
+    ```bash
+    uhhhh lol idk yet
+    ```
+
+4. Set your music path in Config/musicpath.yaml:
+
+    ```bash
+    musicPath: 'your_music_path_here'
+    ```
+
+5. Build and run the application:
 
     ```bash
     dotnet build
+    dotnet run
     ```
 
-4. Run the application:
+6. Set up OTP by visiting this endpoint and scanning the QR code on a device with Google Auth or equivalent:
 
     ```bash
-    dotnet run
+    /api/auth/generate-qr
     ```
 
 ---
 
 ## Usage
 
-After running the application, the Web API will be available at `http://localhost:5000` (or another port, depending on configuration). You can interact with it through the following API endpoints:
+After port forwarding and setting up all of the necessary configuration including OTP, your MDB server should be ready to interact with the client (W.I.P).
 
 -- under construction --

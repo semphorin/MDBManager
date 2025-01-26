@@ -33,4 +33,15 @@ C:\Users\Sachi\source\repos\MDBManager\obj\Debug\net8.0\refint\MDBManager.dll
 C:\Users\Sachi\source\repos\MDBManager\obj\Debug\net8.0\MDBManager.pdb
 C:\Users\Sachi\source\repos\MDBManager\obj\Debug\net8.0\MDBManager.genruntimeconfig.cache
 C:\Users\Sachi\source\repos\MDBManager\obj\Debug\net8.0\ref\MDBManager.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\Microsoft.Bcl.Memory.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\Otp.NET.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\QRCoder.dll
+C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
 C:\Users\Sachi\source\repos\MDBManager\bin\Debug\net8.0\metadata.json

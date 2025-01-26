@@ -1,11 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using YamlDotNet.Serialization;
-using System.Security.Cryptography;
-using Microsoft.AspNetCore.Http.Features;
-using System.Text.Json.Serialization;
 using System.Text.Json;
-using YamlDotNet.Core.Tokens;
-using Microsoft.VisualBasic;
+using System.IO.Compression;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Caching.Memory;
+
 
 namespace MDBManager.Controllers
 {
@@ -13,25 +12,6 @@ namespace MDBManager.Controllers
     [Route("api/[controller]")]
     public class SyncController : ControllerBase
     {
-        //should be an absolute path
-        private readonly string musicFolder = GetConfiguredMusicPath();
-
-
-        static public string GetConfiguredMusicPath(){
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "musicpath.yaml");
-            if (!System.IO.File.Exists(path))
-            {
-                return "";
-            }
-
-            string yamlContent = System.IO.File.ReadAllText(path);
-            var deserializer = new DeserializerBuilder().Build();
-            var yamlObject = deserializer.Deserialize<Dictionary<string, string>>(yamlContent);
-
-            return yamlObject["musicPath"];
-        }
-
-
         // We generate the metadata in Python outside of the webserver for convenience.
         // MDBClient will generate its own metadata.
         // Possibly find a way to run the script on its own whenever the Music folder
@@ -39,19 +19,20 @@ namespace MDBManager.Controllers
         // Can the webserver update the db on its own at a set interval? (probably)
 
         // Metadata should be used on the server to determine if a sync is needed.
+        private readonly ISyncService _syncService;
+        private readonly IMemoryCache _memoryCache;
+        public SyncController(ISyncService syncService, IMemoryCache memoryCache)
+        {
+            _syncService = syncService;
+            _memoryCache = memoryCache;
+        }
 
-        // Purely an example method. Retrieves the server's metadata file.
         [HttpGet("getMetadata")]
         public IActionResult ReturnMetadata()
         {
             try
             {
-                using (StreamReader reader = new StreamReader("metadata.json"))
-                {
-                    string temp = reader.ReadToEnd();
-                    Dictionary<string,string> metadata = JsonSerializer.Deserialize<Dictionary<string,string>>(temp);
-                    return Ok(metadata);
-                }
+                return Ok(_syncService.ReturnMetadata());
             }
             catch
             {
@@ -61,33 +42,23 @@ namespace MDBManager.Controllers
 
 
         [HttpPost("sendMetadata")]
+        [Authorize]
         public IActionResult ReceiveMetadata([FromBody] Dictionary<string,string> clientMetadata)
         {
-            //open the server's metadata file
-            Dictionary<string,string> serverMetadata = new Dictionary<string,string>();
-            try
-            {
-                using (StreamReader reader = new StreamReader("metadata.json"))
-                {
-                    string temp = reader.ReadToEnd();
-                    serverMetadata = JsonSerializer.Deserialize<Dictionary<string,string>>(temp);
-                }
-            }
-            catch
-            {
-                return NoContent();
-            }
-
-            Dictionary<string,string> diff = new Dictionary<string,string>();
-            foreach (KeyValuePair<string,string> entry in serverMetadata)
-            {
-                if (!clientMetadata.ContainsKey(entry.Key) || clientMetadata[entry.Key] != entry.Value)
-                {
-                    diff[entry.Key] = entry.Value;
-                }
-            }
-
+            //if the output is {}, client knows sync isn't needed
+            Dictionary<string,string> diff = _syncService.ReceiveMetadata(clientMetadata);
+            _memoryCache.Set("diff", diff);
             return Ok(diff);
+        }
+
+
+        [HttpGet("downloadDiff")]
+        [Authorize]
+        public IActionResult DownloadDiff()
+        {
+            _memoryCache.TryGetValue("diff", out Dictionary<string,string>? diff);
+            byte[] fileBytes = _syncService.DownloadDiff(diff);
+            return File(fileBytes, "application/zip", "diff.zip");
         }
 
         // [HttpGet("download/{*relPath}")]
@@ -147,12 +118,6 @@ namespace MDBManager.Controllers
         // }
 
 
-        // private static string ComputeHash(string filePath)
-        // {
-        //     using var sha256 = SHA256.Create();
-        //     using var stream = System.IO.File.OpenRead(filePath);
-        //     var hash = sha256.ComputeHash(stream);
-        //     return BitConverter.ToString(hash).Replace("-", "").ToLower();
-        // }
+
     }
 }

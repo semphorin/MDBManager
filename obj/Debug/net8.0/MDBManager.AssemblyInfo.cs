@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("ae898b5c-a4a1-4bad-981a-83a6c128054f")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("MDBManager")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f280a9b759b7c833d1c8455ae0f582eddf8e1894")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c008a03971b8a3445e8cd7bf6b3c0b7b40b75052")]
 [assembly: System.Reflection.AssemblyProductAttribute("MDBManager")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MDBManager")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
