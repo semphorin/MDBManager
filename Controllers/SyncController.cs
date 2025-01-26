@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http.Features;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using YamlDotNet.Core.Tokens;
+using Microsoft.VisualBasic;
 
 namespace MDBManager.Controllers
 {
@@ -35,8 +36,12 @@ namespace MDBManager.Controllers
         // MDBClient will generate its own metadata.
         // Possibly find a way to run the script on its own whenever the Music folder
         // is updated?
+        // Can the webserver update the db on its own at a set interval? (probably)
 
-        [HttpGet("returnmetadata")]
+        // Metadata should be used on the server to determine if a sync is needed.
+
+        // Purely an example method. Retrieves the server's metadata file.
+        [HttpGet("getMetadata")]
         public IActionResult ReturnMetadata()
         {
             try
@@ -55,20 +60,50 @@ namespace MDBManager.Controllers
         }
 
 
-        [HttpGet("download/{*relPath}")]
-        public IActionResult DownloadFile(string relPath)
+        [HttpPost("sendMetadata")]
+        public IActionResult ReceiveMetadata([FromBody] Dictionary<string,string> clientMetadata)
         {
-            var filePath = Path.Combine(musicFolder, relPath);
-
-            if (!System.IO.File.Exists(filePath))
+            //open the server's metadata file
+            Dictionary<string,string> serverMetadata = new Dictionary<string,string>();
+            try
             {
-                return NotFound("File not found.");
+                using (StreamReader reader = new StreamReader("metadata.json"))
+                {
+                    string temp = reader.ReadToEnd();
+                    serverMetadata = JsonSerializer.Deserialize<Dictionary<string,string>>(temp);
+                }
+            }
+            catch
+            {
+                return NoContent();
             }
 
-            var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-            var fileName = Path.GetFileName(filePath);
-            return File(fileStream, "application/octet-stream", fileName);
+            Dictionary<string,string> diff = new Dictionary<string,string>();
+            foreach (KeyValuePair<string,string> entry in serverMetadata)
+            {
+                if (!clientMetadata.ContainsKey(entry.Key) || clientMetadata[entry.Key] != entry.Value)
+                {
+                    diff[entry.Key] = entry.Value;
+                }
+            }
+
+            return Ok(diff);
         }
+
+        // [HttpGet("download/{*relPath}")]
+        // public IActionResult DownloadFile(string relPath)
+        // {
+        //     var filePath = Path.Combine(musicFolder, relPath);
+
+        //     if (!System.IO.File.Exists(filePath))
+        //     {
+        //         return NotFound("File not found.");
+        //     }
+
+        //     var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        //     var fileName = Path.GetFileName(filePath);
+        //     return File(fileStream, "application/octet-stream", fileName);
+        // }
 
 
         // [HttpGet("gendata")]

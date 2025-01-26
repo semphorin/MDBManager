@@ -1,7 +1,13 @@
-import hashlib
+from hashlib import file_digest
 import os
 import yaml
 import json
+from time import time
+
+
+def compute_binary_hash(file, algo='md5'):
+    hashobj = file_digest(file, algo)
+    return hashobj.hexdigest()
 
 
 def generate():
@@ -14,19 +20,22 @@ def generate():
     # plus file hash. store in dictionary
     extensions = ('.mp3', '.flac', '.ogg')
     hashes = {}
+    start = time()
     for (root, dirs, files) in os.walk(musicPath, topdown=True):
         for file in files:
             if file.endswith(extensions):
                 # music file must be read in binary to calculate hash
-                with open(root + "\\" + file, 'rb') as musicFile:
-                    hashobj = hashlib.file_digest(musicFile, "sha256")
-                    hashes[os.path.relpath(root, musicPath)
-                           + '\\' + file] = hashobj.hexdigest()
-        # print(f'{root}, {dirs}, {files}')
+                with open(root + '/' + file, 'rb') as musicFile:
+                    relativePath = os.path.relpath(root, musicPath).replace("\\", "/") + '/' + file
+                    hashes[relativePath] = compute_binary_hash(musicFile)
+
+    print(f"Time to generate MD5: {round(time() - start, 3)} seconds")
 
     # export to json
     with open('metadata.json', 'w') as metadata:
         json.dump(hashes, metadata, indent=4)
+
+    print(f"Time to write metadata: {round(time() - start, 3)} seconds")
 
 
 def main():
