@@ -4,11 +4,13 @@ using System.Text.Json;
 using System.IO.Compression;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
+using System.Threading.Tasks;
 
 
 namespace MDBManager.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class SyncController : ControllerBase
     {
@@ -21,45 +23,110 @@ namespace MDBManager.Controllers
         // Metadata should be used on the server to determine if a sync is needed.
         private readonly ISyncService _syncService;
         private readonly IMemoryCache _memoryCache;
-        public SyncController(ISyncService syncService, IMemoryCache memoryCache)
+        private readonly ILogger<SyncController> _logger;
+        
+        public SyncController(ISyncService syncService, IMemoryCache memoryCache, ILogger<SyncController> logger)
         {
             _syncService = syncService;
             _memoryCache = memoryCache;
+            _logger = logger;
         }
 
-        [HttpGet("getMetadata")]
-        public IActionResult ReturnMetadata()
+        /// <summary>
+        /// Returns the server's current music metadata as a JSON object.
+        /// If an error occurs, returns a 500 status code with an error message.
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("GetMetadata")]
+        public async Task<IActionResult> GetMetadata()
         {
             try
             {
-                return Ok(_syncService.ReturnMetadata());
+                var metadata = await _syncService.ReturnMetadataAsync();
+                return Ok(metadata);
             }
             catch
             {
-                return NoContent();
+                return StatusCode(500, "An error occurred while retrieving metadata");
             }
         }
 
-
-        [HttpPost("sendMetadata")]
-        [Authorize]
-        public IActionResult ReceiveMetadata([FromBody] Dictionary<string,string> clientMetadata)
+        /// <summary>
+        /// Receives metadata from the client and computes the difference
+        /// /// </summary>
+        /// <param name="clientMetadata"></param>
+        /// <returns></returns>
+        [HttpPost("UploadMetadata")]
+        public async Task<IActionResult> UploadMetadata([FromBody] Dictionary<string,string> clientMetadata)
         {
+            _logger.LogInformation("Receiving metadata from client with {count} entries", clientMetadata.Count);
             //if the output is {}, client knows sync isn't needed
-            Dictionary<string,string> diff = _syncService.ReceiveMetadata(clientMetadata);
+            Dictionary<string,string> diff = await _syncService.ReceiveMetadataAsync(clientMetadata);
+            
+            if (diff.Count > 0)
+            {
+                _logger.LogInformation("Found {diffCount} files that need to be synced:", diff.Count);
+                foreach (var item in diff)
+                {
+                    _logger.LogDebug("Diff item: {key} -> {value}", item.Key, item.Value);
+                }
+            }
+            else
+            {
+                _logger.LogInformation("No files need to be synced - client is up to date");
+            }
+            
             _memoryCache.Set("diff", diff);
             return Ok(diff);
         }
 
 
-        [HttpGet("downloadDiff")]
-        [Authorize]
+        // Currently only supports one device at a time.
+        // ---
+        // Problem: Two devices X and Y request to sync with the server in sequence.
+        // Neither of them download as of yet. At the moment, the server
+        // only stores the diff from device Y (as it is overwritten when requested).
+        // So if device X requests to download before device Y does, it will
+        // download device Y's files.
+
+        // Solution 1: change this to a post method that accepts a diff record from
+        // the currently requesting device instead of storing that record on the
+        // server.
+
+        // Solution 2: assign each device a signature (maybe through jwt?) that
+        // the server can recognize and choose the correct record in memory
+        // according to the signature.
+        [HttpGet("DownloadDiff")]
         public IActionResult DownloadDiff()
         {
+            _logger.LogInformation("Client requesting diff download");
             _memoryCache.TryGetValue("diff", out Dictionary<string,string>? diff);
+            if (diff is null || diff.Count == 0)
+            {
+                _logger.LogInformation("No diff available for download - returning NoContent");
+                return NoContent();
+            }
+            
+            _logger.LogInformation("Preparing diff with {count} files for download", diff.Count);
             byte[] fileBytes = _syncService.DownloadDiff(diff);
             return File(fileBytes, "application/zip", "diff.zip");
         }
+
+        // [HttpGet("downloadcert")]
+        // public async Task<IActionResult> DownloadCert()
+        // {
+        //     var _certPath = "mdb.crt";
+        //     if (!System.IO.File.Exists(_certPath))
+        //     {
+        //         return NotFound("Certificate file not found.");
+        //     }
+
+        //     var fileBytes = await System.IO.File.ReadAllBytesAsync(_certPath);
+        //     var fileName = "mdb.crt";
+        //     var contentType = "application/octet-stream"; // MIME type for .pfx files
+
+        //     return File(fileBytes, contentType, fileName);
+        // }
 
         // [HttpGet("download/{*relPath}")]
         // public IActionResult DownloadFile(string relPath)

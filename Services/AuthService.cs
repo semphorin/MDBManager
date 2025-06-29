@@ -16,23 +16,25 @@ public interface IAuthService
 }
 public class AuthService : IAuthService
 {
+    private readonly ILogger<AuthService> _logger;
     public string secretKey { get; set; }
-    public AuthService()
+    
+    public AuthService(ILogger<AuthService> logger)
     {
+        _logger = logger;
         secretKey = UpdateOTPKey();
     }
 
+    // This needs to be completely redone. We need to scale to multiple users as well as generate a new key
+    // when the user wants to reset 2FA.
+    // For now, this is a single user system.
     public string UpdateOTPKey()
     {
         var envVar = Environment.GetEnvironmentVariable("OTP_MDB_SECRET");
         if (envVar is not null && envVar.Length > 19)
-        {
             return envVar;
-        }
-        else
-        {
-            return GenerateSecretKey();
-        }
+
+        return GenerateSecretKey();
     }
 
     public string GenerateSecretKey(int keyLength = 20)
@@ -40,12 +42,11 @@ public class AuthService : IAuthService
         // should only be run if a secret key is not already set!
         var key = KeyGeneration.GenerateRandomKey(keyLength); // 20-byte key
         var encodedKey = Base32Encoding.ToString(key); // convert to string
-        if (encodedKey is not null)
-        {
-            Environment.SetEnvironmentVariable("OTP_MDB_SECRET", this.secretKey, EnvironmentVariableTarget.User);
-            return encodedKey;
-        }
-        else{return "";}
+        if (String.IsNullOrEmpty(encodedKey))
+            return "";
+
+        Environment.SetEnvironmentVariable("OTP_MDB_SECRET", this.secretKey, EnvironmentVariableTarget.User);
+        return encodedKey;
     }
 
     public byte[] GenerateQrCode()
@@ -55,32 +56,34 @@ public class AuthService : IAuthService
         var qrGenerator = new QRCodeGenerator();
         var qrCodeData = qrGenerator.CreateQrCode(otpUrl, QRCodeGenerator.ECCLevel.Q);
         var qrCode = new PngByteQRCode(qrCodeData);
+
         return qrCode.GetGraphic(20);
     }
 
     public bool ValidateToken(string token)
     {
+        _logger.LogDebug("Validating OTP token");
         var otp = new Totp(Base32Encoding.ToBytes(this.secretKey));
-
         bool verified = otp.VerifyTotp(token, out _, new VerificationWindow(1, 1));
-        if (verified)
+        if (!verified)
         {
-            return true;
+            _logger.LogWarning("OTP token validation failed");
+            return false;
         }
-        else{return false;}
+
+        _logger.LogInformation("OTP token validated successfully");
+        return true;
     }
+    
     public string GenerateJwt()
     {
+        _logger.LogInformation("Generating JWT token");
         var temp = Environment.GetEnvironmentVariable("JWT_MDB_SECRET");
         var jwtKey = "";
         if (string.IsNullOrEmpty(temp))
-        {
             throw new Exception("JWT secret is not configured.");
-        }
-        else
-        {
-            jwtKey = temp;
-        }
+
+        jwtKey = temp;
         // var claims = new[]
         // {
         //     new Claim(ClaimTypes.Name, "singleUser") // As you only have one user
@@ -98,6 +101,7 @@ public class AuthService : IAuthService
 
         // clear OTP secretkey from memory after validation succeeds and JWT is generated
         this.secretKey = "";
+        _logger.LogInformation("JWT token generated successfully");
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

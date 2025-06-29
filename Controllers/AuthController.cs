@@ -8,32 +8,40 @@ namespace MDBManager.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        public AuthController(IAuthService authService)
+        private readonly ILogger<AuthController> _logger;
+        
+        public AuthController(IAuthService authService, ILogger<AuthController> logger)
         {
             _authService = authService;
-        }
-
-        [HttpPost("validate-otp")]
+            _logger = logger;
+        }        [HttpPost("validate-otp")]
         public IActionResult ValidateOtp([FromBody] string token)
         {
-            if (_authService.ValidateToken(token))
+            _logger.LogInformation("OTP validation request received");
+            if (!_authService.ValidateToken(token))
             {
-                // TODO
-                // generate and send JWT
-                
-                return Ok(_authService.GenerateJwt());
-            }
-            else
-            {
+                _logger.LogWarning("Unauthorized access attempt with invalid OTP token");
                 return Unauthorized();
             }
+            
+            // generate and send JWT
+            _logger.LogInformation("OTP validated successfully, generating JWT token");
+            return Ok(_authService.GenerateJwt());
         }
 
         [HttpGet("generate-qr")]
         public IActionResult GenerateQRCode()
         {
+            _logger.LogInformation("QR code generation request received");
             byte[] qrCode = _authService.GenerateQrCode();
             return File(qrCode, "image/png");
+        }
+
+        [HttpGet("test")]
+        public IActionResult Test()
+        {
+            _logger.LogInformation("Test endpoint accessed");
+            return Ok("Test successful");
         }
     }
 }

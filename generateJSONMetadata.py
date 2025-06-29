@@ -27,7 +27,7 @@ def generate():
                 # music file must be read in binary to calculate hash
                 with open(root + '/' + file, 'rb') as musicFile:
                     relativePath = os.path.relpath(root, musicPath)
-                    relativePath.replace("\\", "/")
+                    relativePath = relativePath.replace('\\', '/')
                     relativePath += '/' + file
                     hashes[relativePath] = compute_binary_hash(musicFile)
 
